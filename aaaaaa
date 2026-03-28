@@ -40,37 +40,43 @@ local function checkAndFeed()
     local ok,  hunger = pcall(function() return Players["2112his"].DataStats.HungerVal.Value end)
     local ok2, thirst = pcall(function() return Players["2112his"].DataStats.ThirstVal.Value end)
 
-    if (ok and hunger < 50) or (ok2 and thirst < 50) then
-        getgenv().FarmPaused = true
-        print("[Feed] หยุดฟาร์ม — กำลังซื้อและกิน")
+    local needFood  = ok  and hunger < 50
+    local needWater = ok2 and thirst < 50
 
-        local BagRemote = RS:WaitForChild("RemoteEvent_Solf")
-            :WaitForChild("RemoteEventA")
-            :WaitForChild("Bag")
+    if not needFood and not needWater then return end
 
-        local hold  = player:WaitForChild("PlayerGui")
-            :WaitForChild("Backpack"):WaitForChild("Check"):WaitForChild("hold")
-        local delay = player:WaitForChild("PlayerGui")
-            :WaitForChild("Backpack"):WaitForChild("Check"):WaitForChild("delay")
+    getgenv().FarmPaused = true
+    print("[Feed] หยุดฟาร์ม — กำลังซื้อและกิน")
 
-        -- ซื้อ
+    local BagRemote = RS:WaitForChild("RemoteEvent_Solf")
+        :WaitForChild("RemoteEventA")
+        :WaitForChild("Bag")
+
+    local hold  = player:WaitForChild("PlayerGui")
+        :WaitForChild("Backpack"):WaitForChild("Check"):WaitForChild("hold")
+    local delay = player:WaitForChild("PlayerGui")
+        :WaitForChild("Backpack"):WaitForChild("Check"):WaitForChild("delay")
+
+    if needFood then
+        print("[Feed] หิวข้าว — ซื้อ+กิน Onigiri")
         pcall(function() RS:WaitForChild("ShopEvent"):FireServer("Buy", "Onigiri", 1) end)
         task.wait(0.3)
+        pcall(function() BagRemote:FireServer("Use", "Onigiri", hold, delay) end)
+    end
+
+    if needWater then
+        if needFood then task.wait(0.3) end
+        print("[Feed] หิวน้ำ — ซื้อ+กิน Water")
         pcall(function() RS:WaitForChild("ShopEvent"):FireServer("Buy", "Water", 1) end)
         task.wait(0.3)
-
-        -- กิน
-        pcall(function() BagRemote:FireServer("Use", "Onigiri", hold, delay) end)
-        task.wait(0.3)
         pcall(function() BagRemote:FireServer("Use", "Water", hold, delay) end)
-
-        -- รอกินเสร็จ 15 วิ
-        print("[Feed] รอกินเสร็จ 15 วิ...")
-        task.wait(15)
-
-        print("[Feed] กินเสร็จ — กลับไปฟาร์ม")
-        getgenv().FarmPaused = false
     end
+
+    print("[Feed] รอกินเสร็จ 15 วิ...")
+    task.wait(15)
+
+    print("[Feed] กินเสร็จ — กลับไปฟาร์ม")
+    getgenv().FarmPaused = false
 end
 
 -- ═══════════════════════════════════════════
