@@ -1,0 +1,226 @@
+repeat task.wait(.1) until game:IsLoaded()
+
+local Players = game:GetService("Players")
+local VIM = game:GetService("VirtualInputManager")
+local RS = game:GetService("ReplicatedStorage")
+
+local player = Players.LocalPlayer
+local char = player.Character or player.CharacterAdded:Wait()
+local hrp = char:WaitForChild("HumanoidRootPart")
+
+local farmRemote = RS.Fram_System.ShiroFarmEvent
+
+getgenv().FarmActive = false
+getgenv().FarmPaused = false
+
+-- ═══════════════════════════════════════════
+-- UTILITIES
+-- ═══════════════════════════════════════════
+
+local function patchPrompts()
+    for _, v in pairs(workspace:GetDescendants()) do
+        if v:IsA("ProximityPrompt") then
+            v.HoldDuration = 0
+        end
+    end
+end
+
+local function spamKeys()
+    VIM:SendKeyEvent(true,  Enum.KeyCode.E, false, game)
+    task.wait()
+    VIM:SendKeyEvent(false, Enum.KeyCode.E, false, game)
+    task.wait()
+    VIM:SendKeyEvent(true,  Enum.KeyCode.X, false, game)
+    task.wait()
+    VIM:SendKeyEvent(false, Enum.KeyCode.X, false, game)
+    task.wait()
+end
+
+local function checkAndFeed()
+    local ok,  hunger = pcall(function() return Players["2112his"].DataStats.HungerVal.Value end)
+    local ok2, thirst = pcall(function() return Players["2112his"].DataStats.ThirstVal.Value end)
+
+    if (ok and hunger < 50) or (ok2 and thirst < 50) then
+        getgenv().FarmPaused = true
+        print("[Feed] หยุดฟาร์ม — กำลังซื้อและกิน")
+
+        local BagRemote = RS:WaitForChild("RemoteEvent_Solf")
+            :WaitForChild("RemoteEventA")
+            :WaitForChild("Bag")
+
+        local hold  = player:WaitForChild("PlayerGui")
+            :WaitForChild("Backpack"):WaitForChild("Check"):WaitForChild("hold")
+        local delay = player:WaitForChild("PlayerGui")
+            :WaitForChild("Backpack"):WaitForChild("Check"):WaitForChild("delay")
+
+        -- ซื้อ
+        pcall(function() RS:WaitForChild("ShopEvent"):FireServer("Buy", "Onigiri", 1) end)
+        task.wait(0.3)
+        pcall(function() RS:WaitForChild("ShopEvent"):FireServer("Buy", "Water", 1) end)
+        task.wait(0.3)
+
+        -- กิน
+        pcall(function() BagRemote:FireServer("Use", "Onigiri", hold, delay) end)
+        task.wait(0.3)
+        pcall(function() BagRemote:FireServer("Use", "Water", hold, delay) end)
+
+        -- รอกินเสร็จ 15 วิ
+        print("[Feed] รอกินเสร็จ 15 วิ...")
+        task.wait(15)
+
+        print("[Feed] กินเสร็จ — กลับไปฟาร์ม")
+        getgenv().FarmPaused = false
+    end
+end
+
+-- ═══════════════════════════════════════════
+-- HUNGER WATCHER ทุก 20 วิ
+-- ═══════════════════════════════════════════
+
+task.spawn(function()
+    while true do
+        task.wait(20)
+        if getgenv().FarmActive then
+            checkAndFeed()
+        end
+    end
+end)
+
+-- ═══════════════════════════════════════════
+-- FARM LOOP
+-- ═══════════════════════════════════════════
+
+local function farmLoop(itemPath, target, tpPos)
+    patchPrompts()
+    hrp.CFrame = CFrame.new(tpPos)
+    task.wait(0.8)
+    patchPrompts()
+
+    local stopFire = false
+
+    task.spawn(function()
+        while not stopFire do
+            task.spawn(function() farmRemote:FireServer("ARRIVED") end)
+            task.wait(0.1)
+        end
+    end)
+
+    while getgenv().FarmActive do
+        while getgenv().FarmPaused do task.wait(0.1) end
+        if not getgenv().FarmActive then break end
+
+        local ok, val = pcall(function() return itemPath().Value end)
+        if ok and val >= target then
+            print("ครบ " .. target .. " แล้ว!")
+            break
+        end
+
+        spamKeys()
+    end
+
+    stopFire = true
+    task.wait(0.3)
+end
+
+local function startFarmAll()
+    checkAndFeed()
+
+    print("--- ฟาร์ม Pepper ---")
+    farmLoop(function() return Players["2112his"].Item.Pepper end, 60, Vector3.new(7283, -273, -604))
+    if not getgenv().FarmActive then return end
+
+    print("--- ฟาร์ม Carrot ---")
+    farmLoop(function() return Players["2112his"].Item.Carrot end, 60, Vector3.new(-451, -233, 2209))
+    if not getgenv().FarmActive then return end
+
+    print("--- ฟาร์ม Milk ---")
+    farmLoop(function() return Players["2112his"].Item.Milk end, 60, Vector3.new(-3788, -273, 3117))
+    if not getgenv().FarmActive then return end
+
+    print("--- ฟาร์ม Tomato ---")
+    farmLoop(function() return Players["2112his"].Item.Tomato end, 60, Vector3.new(-9181, -238, -274))
+    if not getgenv().FarmActive then return end
+
+    print("--- ขายของ ---")
+    RS:WaitForChild("SellItemsEvent"):FireServer({
+        Pepper = 60,
+        Carrot = 60,
+        Milk   = 60,
+        Tomato = 60,
+    })
+    print("[Done] Sold all x60")
+
+    if getgenv().FarmActive then
+        task.spawn(startFarmAll)
+    end
+end
+
+-- ═══════════════════════════════════════════
+-- WINDUI
+-- ═══════════════════════════════════════════
+
+local WindUI = loadstring(game:HttpGet("https://github.com/Footagesus/WindUI/releases/latest/download/main.lua"))()
+
+local Window = WindUI:CreateWindow({
+    Title = "Farm Bot",
+    Icon = "shovel",
+    Author = "AutoFarm",
+    Folder = "FarmBot",
+    Size = UDim2.fromOffset(400, 200),
+    Transparent = true,
+    Theme = "Dark",
+})
+
+Window:SetToggleKey(Enum.KeyCode.RightShift)
+Window:IsResizable(false)
+
+local MainSection = Window:Section({ Title = "Farm", Opened = true })
+local FarmTab = MainSection:Tab({ Title = "Farm", Icon = "sprout" })
+FarmTab:Select()
+
+FarmTab:Toggle({
+    Title = "Auto Farm",
+    Description = "Pepper → Carrot → Milk → Tomato → Sell | หยุดกินข้าวทุก 20 วิ",
+    Value = false,
+    Callback = function(state)
+        getgenv().FarmActive = state
+        if state then
+            print("[Farm] เริ่มฟาร์ม")
+            task.spawn(startFarmAll)
+        else
+            print("[Farm] หยุดฟาร์ม")
+        end
+    end
+})
+
+-- ═══════════════════════════════════════════
+-- MOBILE TOGGLE
+-- ═══════════════════════════════════════════
+
+local ToggleGui = Instance.new("ScreenGui")
+ToggleGui.Name = "ToggleGui"
+ToggleGui.Parent = player:WaitForChild("PlayerGui")
+ToggleGui.ResetOnSpawn = false
+ToggleGui.DisplayOrder = 99999
+ToggleGui.IgnoreGuiInset = true
+
+local Btn = Instance.new("TextButton")
+Btn.Size = UDim2.new(0, 100, 0, 40)
+Btn.Position = UDim2.new(0.02, 0, 0.45, 0)
+Btn.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+Btn.TextColor3 = Color3.fromRGB(30, 30, 30)
+Btn.Text = "Farm GUI"
+Btn.Font = Enum.Font.GothamMedium
+Btn.TextSize = 15
+Btn.Draggable = true
+Btn.ZIndex = 99999
+Btn.Parent = ToggleGui
+
+Instance.new("UICorner", Btn).CornerRadius = UDim.new(0, 12)
+
+local isOpen = true
+Btn.MouseButton1Click:Connect(function()
+    isOpen = not isOpen
+    Window:Toggle()
+    Btn.Text = isOpen and "Farm GUI" or "Open GUI"
+end)
