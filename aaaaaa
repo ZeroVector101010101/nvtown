@@ -128,23 +128,36 @@ local function farmLoop(itemPath, target, tpPos)
     task.wait(0.3)
 end
 
+
+task.spawn(function()
+    while true do
+        for _, obj in pairs(workspace:GetChildren()) do
+            local name = obj.Name:upper()
+            if name:find("SHIRO") and name:find("LOCAL") then
+                pcall(function() obj:Destroy() end)
+            end
+        end
+        task.wait(1)
+    end
+end)
+
 local function startFarmAll()
     checkAndFeed()
 
     print("--- ฟาร์ม Pepper ---")
-    farmLoop(function() return Players["2112his"].Item.Pepper end, 60, Vector3.new(7283, -273, -604))
+    farmLoop(function() return Players.LocalPlayer.Item.Pepper end, 60, Vector3.new(7283, -273, -604))
     if not getgenv().FarmActive then return end
 
     print("--- ฟาร์ม Carrot ---")
-    farmLoop(function() return Players["2112his"].Item.Carrot end, 60, Vector3.new(-451, -233, 2209))
+    farmLoop(function() return Players.LocalPlayer.Item.Carrot end, 60, Vector3.new(-451, -233, 2209))
     if not getgenv().FarmActive then return end
 
     print("--- ฟาร์ม Milk ---")
-    farmLoop(function() return Players["2112his"].Item.Milk end, 60, Vector3.new(-3788, -273, 3117))
+    farmLoop(function() return Players.LocalPlayer.Item.Milk end, 60, Vector3.new(-3788, -273, 3117))
     if not getgenv().FarmActive then return end
 
     print("--- ฟาร์ม Tomato ---")
-    farmLoop(function() return Players["2112his"].Item.Tomato end, 60, Vector3.new(-9181, -238, -274))
+    farmLoop(function() return Players.LocalPlayer.Item.Tomato end, 60, Vector3.new(-9181, -238, -274))
     if not getgenv().FarmActive then return end
 
     print("--- ขายของ ---")
